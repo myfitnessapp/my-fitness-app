@@ -77,6 +77,11 @@ const defaultGoals = {
 }
 
 const defaultDashboardItems = ["weight", "waist", "trainingDays"]
+const storageKeys = {
+  profile: "nourishTrain:v2:profile",
+  goals: "nourishTrain:v2:goals",
+  dashboardItems: "nourishTrain:v2:dashboardItems",
+}
 
 function readStoredValue(key, fallback) {
   const storedValue = localStorage.getItem(key)
@@ -110,13 +115,13 @@ function App() {
   const [activeTab, setActiveTab] = useState("profile")
   const [showDashboardSettings, setShowDashboardSettings] = useState(false)
   const [profile, setProfile] = useState(() =>
-    readStoredValue("profile", defaultProfile)
+    readStoredValue(storageKeys.profile, defaultProfile)
   )
   const [goals, setGoals] = useState(() =>
-    readStoredValue("goals", defaultGoals)
+    readStoredValue(storageKeys.goals, defaultGoals)
   )
   const [dashboardItems, setDashboardItems] = useState(() =>
-    readStoredArray("dashboardItems", defaultDashboardItems)
+    readStoredArray(storageKeys.dashboardItems, defaultDashboardItems)
   )
   const profileMeasurements = getProfileMeasurements(profile)
   const dashboardOptions = getDashboardOptions(profile, profileMeasurements)
@@ -125,15 +130,15 @@ function App() {
   )
 
   useEffect(() => {
-    localStorage.setItem("profile", JSON.stringify(profile))
+    localStorage.setItem(storageKeys.profile, JSON.stringify(profile))
   }, [profile])
 
   useEffect(() => {
-    localStorage.setItem("goals", JSON.stringify(goals))
+    localStorage.setItem(storageKeys.goals, JSON.stringify(goals))
   }, [goals])
 
   useEffect(() => {
-    localStorage.setItem("dashboardItems", JSON.stringify(dashboardItems))
+    localStorage.setItem(storageKeys.dashboardItems, JSON.stringify(dashboardItems))
   }, [dashboardItems])
 
   function toggleDashboardItem(value) {
