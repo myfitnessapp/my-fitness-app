@@ -4,29 +4,24 @@ import NutritionSection from "./Components/NutritionSection"
 import FitnessSection from "./Components/FitnessSection"
 
 const defaultProfile = {
-  name: "Maryam",
-  age: "32",
-  genderIdentity: "Woman",
-  sex: "Female",
-  height: "5 ft 7 in",
-  heightFeet: "5",
-  heightInches: "7",
-  weight: "150",
-  measurements: {
-    shoulders: "38",
-    waist: "27.5",
-    hips: "39",
-    glutes: "40",
-  },
+  name: "",
+  age: "",
+  genderIdentity: "",
+  sex: "",
+  height: "",
+  heightFeet: "",
+  heightInches: "",
+  weight: "",
+  measurements: {},
   activityLevel: "moderate",
-  equipment: "Gym machines, dumbbells, cables, treadmill, rower, StairMaster",
-  dietaryPreferences: "High-protein, anti-inflammatory meals",
+  equipment: "",
+  dietaryPreferences: "",
   mealPreference: "coach",
   allergies: "",
-  limitations: "Lower-back and hamstring mobility focus",
-  sportsInterests: "Persian dance, Baladi, rowing, running, skating",
+  limitations: "",
+  sportsInterests: "",
   trainingDaysMode: "coach",
-  trainingDays: "4",
+  trainingDays: "",
 }
 
 const measurementOptions = [
