@@ -47,6 +47,78 @@ const exerciseLibrary = [
     mistake: "Lifting with shoulders instead of hinging.",
   },
   {
+    name: "Trap Bar Deadlift",
+    focus: "Compound Strength",
+    equipment: ["trap bar", "barbell", "gym"],
+    sets: "3",
+    reps: "5-6",
+    cue: "Brace hard, push the floor away, and finish tall without leaning back.",
+    mistake: "Letting hips shoot up before the chest moves.",
+  },
+  {
+    name: "Front Squat",
+    focus: "Compound Strength / Bracing",
+    equipment: ["barbell", "dumbbells", "gym"],
+    sets: "3",
+    reps: "5-8",
+    cue: "Elbows high, ribs stacked, drive evenly through the whole foot.",
+    mistake: "Collapsing through the upper back at the bottom.",
+  },
+  {
+    name: "Farmer Carry",
+    focus: "Loaded Carry / Core",
+    equipment: ["dumbbells", "kettlebells", "gym", "home"],
+    sets: "4",
+    reps: "30-40 m",
+    cue: "Walk tall with quiet ribs and crush the handles.",
+    mistake: "Rushing the walk or leaning away from the heavier side.",
+  },
+  {
+    name: "Sled Push",
+    focus: "Loaded Conditioning",
+    equipment: ["sled", "gym"],
+    sets: "6",
+    reps: "20-30 m",
+    cue: "Short powerful steps, neutral spine, drive through the ground.",
+    mistake: "Letting the hips rise while the feet shuffle lightly.",
+  },
+  {
+    name: "Dumbbell Thruster",
+    focus: "HIIT Strength",
+    equipment: ["dumbbells", "home", "gym"],
+    sets: "4",
+    reps: "8-10",
+    cue: "Use the squat to launch the press and lock out with ribs down.",
+    mistake: "Pressing early instead of transferring leg drive.",
+  },
+  {
+    name: "Burpee Broad Jump",
+    focus: "Plyometrics / Conditioning",
+    equipment: ["bodyweight", "home", "gym"],
+    sets: "4",
+    reps: "5",
+    cue: "Land softly, reset your feet, and jump with full hip extension.",
+    mistake: "Landing stiff-legged or rushing sloppy reps.",
+  },
+  {
+    name: "Box Jump",
+    focus: "Plyometrics",
+    equipment: ["box", "gym"],
+    sets: "5",
+    reps: "3",
+    cue: "Jump explosively, land quietly, step down between reps.",
+    mistake: "Turning it into conditioning with rushed landings.",
+  },
+  {
+    name: "Dead Bug Pullover",
+    focus: "Core / Bracing",
+    equipment: ["dumbbells", "kettlebells", "home", "gym", "bodyweight"],
+    sets: "3",
+    reps: "8 each side",
+    cue: "Exhale, pin ribs down, and move only as far as you can brace.",
+    mistake: "Arching the low back to chase range.",
+  },
+  {
     name: "Incline Treadmill",
     focus: "Cardio",
     equipment: ["treadmill", "gym"],
@@ -219,7 +291,7 @@ function FitnessSection({ profile, goals }) {
           activeTrainingDays,
           heartRateZones,
           style: selectedStyle,
-          request: "Create a personalized weekly workout plan and AI-generated coach recommendation. Priorities, rationale, and recovery must be brief and individualized from the person's profile, goals, equipment, limitations, sport interests, and weekly availability.",
+          request: "Create a personalized weekly workout plan and AI-generated coach recommendation. Each Train Like A archetype must feel distinct through movement selection, conditioning style, progression, safety substitutions, and structured blocks. Priorities, rationale, and recovery must be brief and individualized from the person's profile, goals, equipment, limitations, sport interests, and weekly availability.",
         }),
       })
       const data = await response.json()
@@ -866,6 +938,7 @@ function createWorkoutPlan(profile, goals, preferences, styleOptions, heartRateZ
   const selectedStyle = styleOptions.find((style) => style.value === preferences.style)
   const styleLabel = selectedStyle?.label || toTitleCase(preferences.style)
   const styleFocus = selectedStyle?.focus || preferences.style
+  const isIntenseStyle = isIntenseTrainingStyle(selectedStyle?.value || preferences.style)
   const availableExercises = exerciseLibrary.filter((exercise) =>
     exercise.equipment.some((item) => equipmentText.includes(item))
   )
@@ -873,7 +946,7 @@ function createWorkoutPlan(profile, goals, preferences, styleOptions, heartRateZ
     ? availableExercises
     : exerciseLibrary.filter((exercise) => exercise.equipment.includes("bodyweight"))
 
-  const templates = [
+  const templates = isIntenseStyle ? createIntenseTrainingTemplates(styleLabel) : [
     { day: "Day 1", title: "Glutes + Pull Strength", focus: "glutes, back, progressive overload" },
     { day: "Day 2", title: "Cardio + Mobility", focus: `conditioning, hamstrings, ${styleFocus}` },
     { day: "Day 3", title: "Upper Body Shape", focus: "arms, back, posture" },
@@ -895,28 +968,51 @@ function createWorkoutPlan(profile, goals, preferences, styleOptions, heartRateZ
     const strengthIncluded = !isMobilityOnlyDay && !isCardioOnlyDay && index < adjustedStrengthDays
     const cardioIncluded = shouldIncludeCardio(index, adjustedCardioDays, preferences.cardioPlacement, days, isCardioOnlyDay)
     const mobilityIncluded = shouldIncludeMobility(index, adjustedMobilityDays, preferences.mobilityPlacement, days, isMobilityOnlyDay)
+    const workoutFlags = isIntenseStyle
+      ? { strengthIncluded: true, cardioIncluded: true, mobilityIncluded: true, intenseFlow: true }
+      : { strengthIncluded, cardioIncluded, mobilityIncluded }
     const timing = createWorkoutTiming(
-      { ...template, strengthIncluded, cardioIncluded, mobilityIncluded },
+      { ...template, ...workoutFlags },
       durationPreference
     )
+    const workoutExercises = isIntenseStyle
+      ? createIntenseExerciseList(selectedExercises, goalText, template.focus, index)
+      : exercisePool.slice(0, getExerciseCount(durationPreference))
 
     return {
       ...template,
       location: preferences.location,
-      prescription: strengthIncluded
-        ? `${getStrengthPrescription(durationPreference)} (${describeDurationPreference(durationPreference)})`
+      prescription: workoutFlags.strengthIncluded
+        ? `${isIntenseStyle ? getIntenseStrengthPrescription(timing) : getStrengthPrescription(durationPreference)} (${describeDurationPreference(durationPreference)})`
         : `No strength block today (${describeDurationPreference(durationPreference)})`,
       duration: formatWorkoutDuration(timing.total),
       durationPreference,
       timeBreakdown: timing,
-      strengthIncluded,
-      cardioIncluded,
-      mobilityIncluded,
-      cardio: cardioIncluded ? createWorkoutCardio(template, profile, goals, heartRateZones, durationPreference, timing.cardio) : null,
-      mobility: mobilityIncluded ? createMobilityBlock(template, preferences.mobilityPlacement, durationPreference, timing.mobility) : null,
-      exercises: strengthIncluded ? exercisePool.slice(0, getExerciseCount(durationPreference)) : [],
+      intenseFlow: isIntenseStyle,
+      sessionFlow: isIntenseStyle ? createIntenseSessionFlow(timing) : null,
+      strengthIncluded: workoutFlags.strengthIncluded,
+      cardioIncluded: workoutFlags.cardioIncluded,
+      mobilityIncluded: workoutFlags.mobilityIncluded,
+      cardio: workoutFlags.cardioIncluded ? createWorkoutCardio(template, profile, goals, heartRateZones, durationPreference, timing.cardio, isIntenseStyle) : null,
+      mobility: workoutFlags.mobilityIncluded ? createMobilityBlock(template, preferences.mobilityPlacement, durationPreference, timing.mobility, isIntenseStyle) : null,
+      exercises: workoutFlags.strengthIncluded ? workoutExercises : [],
     }
   })
+}
+
+function isIntenseTrainingStyle(styleValue = "") {
+  return ["warrior", "dragon-slayer"].includes(styleValue)
+}
+
+function createIntenseTrainingTemplates(styleLabel) {
+  return [
+    { day: "Day 1", title: `${styleLabel} Compound Strength`, focus: "compound strength, loaded carries, incline treadmill bursts, core bracing" },
+    { day: "Day 2", title: `${styleLabel} Engine Intervals`, focus: "HIIT strength circuit, running bursts, trunk control, short rests" },
+    { day: "Day 3", title: `${styleLabel} Upper + Carry Power`, focus: "upper-body compounds, carries, plyometrics, bracing" },
+    { day: "Day 4", title: `${styleLabel} Lower-Body Power`, focus: "squat and hinge strength, plyometrics, incline treadmill bursts" },
+    { day: "Day 5", title: `${styleLabel} Full-Body Gauntlet`, focus: "compound strength, loaded conditioning, HIIT intervals, anti-rotation core" },
+    { day: "Day 6", title: `${styleLabel} Athletic Reload`, focus: "moderate compounds, carries, crisp intervals, mobility" },
+  ]
 }
 
 function shouldIncludeCardio(index, cardioDays, placement, totalDays, isCardioOnlyDay) {
@@ -958,10 +1054,14 @@ function applyWorkoutTiming(workout, durationPreference = "coach") {
   }
 
   if (nextWorkout.strengthIncluded) {
-    nextWorkout.prescription = `${getStrengthPrescription(scaledPreference)} (${describeDurationPreference(durationPreference)})`
-    nextWorkout.exercises = (nextWorkout.exercises || []).slice(0, getExerciseCount(scaledPreference))
+    nextWorkout.prescription = `${nextWorkout.intenseFlow ? getIntenseStrengthPrescription(timing) : getStrengthPrescription(scaledPreference)} (${describeDurationPreference(durationPreference)})`
+    nextWorkout.exercises = (nextWorkout.exercises || []).slice(0, getExerciseCount(nextWorkout.intenseFlow ? "60" : scaledPreference))
   } else {
     nextWorkout.prescription = `No strength block today (${describeDurationPreference(durationPreference)})`
+  }
+
+  if (nextWorkout.intenseFlow) {
+    nextWorkout.sessionFlow = createIntenseSessionFlow(timing)
   }
 
   if (nextWorkout.cardioIncluded && nextWorkout.cardio) {
@@ -974,7 +1074,7 @@ function applyWorkoutTiming(workout, durationPreference = "coach") {
   if (nextWorkout.mobilityIncluded && nextWorkout.mobility) {
     nextWorkout.mobility = {
       ...nextWorkout.mobility,
-      amount: `${timing.mobility} minutes`,
+      amount: nextWorkout.intenseFlow ? `${timing.mobility} minute cool-down` : `${timing.mobility} minutes`,
     }
   }
 
@@ -982,6 +1082,10 @@ function applyWorkoutTiming(workout, durationPreference = "coach") {
 }
 
 function createWorkoutTiming(workout, durationPreference = "coach") {
+  if (workout.intenseFlow) {
+    return createIntenseWorkoutTiming(durationPreference)
+  }
+
   const total = getWorkoutMinutes(workout, durationPreference)
   const sections = [
     workout.strengthIncluded ? { key: "strength", weight: getSectionWeight(workout, "strength") } : null,
@@ -1021,6 +1125,52 @@ function createWorkoutTiming(workout, durationPreference = "coach") {
     cardio: rounded.find((section) => section.key === "cardio")?.minutes || 0,
     mobility: rounded.find((section) => section.key === "mobility")?.minutes || 0,
   }
+}
+
+function createIntenseWorkoutTiming(durationPreference = "coach") {
+  const total = durationPreference === "coach" ? 42 : Number(durationPreference)
+
+  if (total <= 15) {
+    return { total, warmup: 2, strength: 5, cardio: 5, plyometrics: 0, mobility: 3 }
+  }
+
+  if (total <= 30) {
+    return { total, warmup: 4, strength: 9, cardio: 11, plyometrics: 3, mobility: 3 }
+  }
+
+  if (total <= 45) {
+    const warmup = 5
+    const strength = 12
+    const cardio = total >= 40 ? 14 : 12
+    const mobility = total >= 40 ? 4 : 3
+    const plyometrics = total - warmup - strength - cardio - mobility
+
+    return { total, warmup, strength, cardio, plyometrics, mobility }
+  }
+
+  const warmup = 7
+  const mobility = 6
+  const strength = Math.round(total * 0.34)
+  const cardio = Math.round(total * 0.34)
+  const plyometrics = Math.max(6, total - warmup - mobility - strength - cardio)
+
+  return { total, warmup, strength, cardio, plyometrics, mobility }
+}
+
+function createIntenseSessionFlow(timing) {
+  return [
+    { label: "Warm-up", minutes: timing.warmup, detail: "Dynamic hips, ankles, shoulders, light ramp sets" },
+    { label: "Strength block", minutes: timing.strength, detail: "Heavy compound lift with crisp reps and short setup time" },
+    { label: "HIIT strength circuit", minutes: timing.cardio, detail: "Loaded carries, swings, thrusters, sleds, or run/incline bursts" },
+    timing.plyometrics
+      ? { label: "Plyometric finisher", minutes: timing.plyometrics, detail: "Low-volume jumps, bounds, or explosive bodyweight reps" }
+      : null,
+    { label: "Cool-down", minutes: timing.mobility, detail: "Breathing, hip flexors, hamstrings, T-spine, easy walk-down" },
+  ].filter(Boolean)
+}
+
+function getIntenseStrengthPrescription(timing) {
+  return `${timing.strength} min compound strength, ${timing.cardio} min HIIT circuit, ${timing.plyometrics} min plyometric finisher, short rests`
 }
 
 function getWorkoutMinutes(workout, durationPreference = "coach") {
@@ -1170,23 +1320,36 @@ function createTimedCardioAmount(cardio, minutes) {
   return `${rounds} rounds: ${hardSeconds} sec hard / ${easySeconds} sec easy`
 }
 
-function createMobilityBlock(template, placement, durationPreference = "coach", minutes = null) {
+function createMobilityBlock(template, placement, durationPreference = "coach", minutes = null, isIntenseStyle = false) {
   const focus = template.focus.toLowerCase()
-  const drills = focus.includes("glute") || focus.includes("speed")
+  const drills = isIntenseStyle
+    ? ["Cossack squat pry", "Hip flexor breathing", "T-spine rotations", "Hamstring flossing"]
+    : focus.includes("glute") || focus.includes("speed")
     ? ["90/90 hip switches", "Couch stretch", "Adductor rockbacks", "Ankle dorsiflexion pulses"]
     : ["Thoracic rotations", "Hamstring flossing", "Hip flexor breathing", "Deep squat pry"]
 
   return {
     placement,
-    amount: getMobilityAmount(placement, durationPreference, minutes),
+    amount: isIntenseStyle && minutes ? `${minutes} minute cool-down` : getMobilityAmount(placement, durationPreference, minutes),
     drills,
   }
 }
 
-function createWorkoutCardio(template, profile, goals, heartRateZones, durationPreference = "coach", minutes = null) {
+function createWorkoutCardio(template, profile, goals, heartRateZones, durationPreference = "coach", minutes = null, isIntenseStyle = false) {
   const equipmentText = `${profile.equipment} ${profile.sportsInterests}`.toLowerCase()
   const goalText = getGoalsText(goals).toLowerCase()
   const modality = chooseCardioModality(equipmentText, goalText, template.focus)
+
+  if (isIntenseStyle) {
+    return {
+      title: "HIIT strength intervals",
+      modality: modality.includes("Treadmill") ? "Run or incline treadmill bursts" : `${modality} plus loaded carries`,
+      amount: createTimedCardioAmount({ title: "Intervals", modality }, minutes) || "8-10 rounds: 30 sec hard / 60 sec easy",
+      intensity: "Hard, athletic, repeatable; rest just long enough to keep form sharp",
+      zone: heartRateZones.zones[3],
+      note: "Pair each burst with a carry, swing, sled push, or bracing drill when equipment allows.",
+    }
+  }
 
   if (template.focus.toLowerCase().includes("speed") || template.focus.toLowerCase().includes("conditioning")) {
     return {
@@ -1291,6 +1454,27 @@ function rankExercises(exercises, goalText, focus) {
   })
 }
 
+function createIntenseExerciseList(exercises, goalText, focus, index) {
+  const rankedExercises = rankExercises(exercises, goalText, focus)
+  const pickByFocus = (words, fallbackIndex = 0) =>
+    rankedExercises.find((exercise) => includesAny(exercise.focus.toLowerCase(), words)) ||
+    exerciseLibrary.find((exercise) => includesAny(exercise.focus.toLowerCase(), words)) ||
+    rankedExercises[fallbackIndex]
+  const compound = index % 2 === 0
+    ? pickByFocus(["compound strength", "glutes", "hamstrings"], 0)
+    : pickByFocus(["compound strength", "shoulder", "back"], 1)
+  const carry = pickByFocus(["loaded carry", "loaded conditioning"], 2)
+  const hiit = pickByFocus(["hiit strength", "power / conditioning", "loaded conditioning"], 3)
+  const plyo = pickByFocus(["plyometrics"], 4)
+  const core = pickByFocus(["core / bracing", "loaded carry"], 5)
+
+  return [compound, carry, hiit, plyo, core]
+    .filter(Boolean)
+    .filter((exercise, exerciseIndex, list) =>
+      list.findIndex((item) => item.name === exercise.name) === exerciseIndex
+    )
+}
+
 function scoreExercise(exercise, goalText, focus) {
   const text = `${exercise.name} ${exercise.focus}`.toLowerCase()
   const focusText = focus.toLowerCase()
@@ -1303,6 +1487,7 @@ function scoreExercise(exercise, goalText, focus) {
   if (includesAny(`${goalText} ${focusText}`, ["row", "rower"]) && text.includes("row")) score += 2
   if (includesAny(`${goalText} ${focusText}`, ["skate", "skater", "basketball", "soccer", "tennis"]) && text.includes("power")) score += 2
   if (includesAny(`${goalText} ${focusText}`, ["flexibility", "mobility"]) && text.includes("flexibility")) score += 2
+  if (includesAny(focusText, ["compound", "carry", "hiit", "plyometric", "bracing", "burst"]) && includesAny(text, ["compound", "carry", "hiit", "plyometric", "core"])) score += 3
 
   return score
 }
@@ -1375,7 +1560,7 @@ function createStyleOption(styleName, source) {
     rowing: "Posterior-chain strength, pulling volume, aerobic base, power endurance, and intervals.",
     rower: "Posterior-chain strength, pulling volume, aerobic base, power endurance, and intervals.",
     "raqs-sharqi": "Fluid hips, core control, posture, shimmies, endurance, mobility, and graceful strength.",
-    "dragon-slayer": "Mythic strength, carries, power intervals, trunk control, mobility, and confident conditioning.",
+    "dragon-slayer": "Athletic compound strength, HIIT strength intervals, loaded carries, run or incline bursts, bracing, short rests, and 35-45 min battle-ready sessions.",
     running: "Speed mechanics, single-leg strength, calves, hamstrings, aerobic base, and intervals.",
     skating: "Lateral strength, balance, glutes, single-leg power, edge control, and rotation.",
     "ice-skater": "Lateral power, single-leg stability, adductors, glutes, rotational control, and landing mechanics.",
@@ -1383,7 +1568,7 @@ function createStyleOption(styleName, source) {
     basketball: "Jump power, deceleration, lateral agility, ankle strength, conditioning, and upper-body durability.",
     "basketball-player": "Jump power, deceleration, lateral agility, ankle strength, conditioning, and upper-body durability.",
     pahlavani: "Bodyweight strength, clubs-inspired shoulders, rhythm, mobility, and conditioning.",
-    warrior: "Heavy compounds, carries, power work, trunk strength, and simple conditioning.",
+    warrior: "Heavy compounds, loaded carries, HIIT intervals, run or incline bursts, plyometrics, bracing, short rests, and 35-45 min athletic sessions.",
   }
 
   return {
@@ -1568,10 +1753,50 @@ function WorkoutCard({ workout, onTrackExercise, extraExercises, onAddExercise, 
             />
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <TimeBreakdownItem label="Cardio" minutes={workout.timeBreakdown.cardio} tone="emerald" />
+            <TimeBreakdownItem label={workout.intenseFlow ? "HIIT" : "Cardio"} minutes={workout.timeBreakdown.cardio} tone="emerald" />
             <TimeBreakdownItem label="Strength" minutes={workout.timeBreakdown.strength} tone="stone" />
-            <TimeBreakdownItem label="Mobility" minutes={workout.timeBreakdown.mobility} tone="purple" />
+            <TimeBreakdownItem label={workout.intenseFlow ? "Cool-down" : "Mobility"} minutes={workout.timeBreakdown.mobility} tone="purple" />
           </div>
+          {workout.sessionFlow?.length > 0 && (
+            <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                Session flow
+              </p>
+              <div className="mt-2 grid gap-2">
+                {workout.sessionFlow.map((block) => (
+                  <div className="grid gap-1 rounded-lg bg-white p-2 text-xs text-stone-700 sm:grid-cols-[110px_54px_1fr]" key={block.label}>
+                    <span className="font-semibold text-stone-950">{block.label}</span>
+                    <span className="font-bold text-emerald-700">{block.minutes} min</span>
+                    <span>{block.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {(workout.modifications || workout.safetySubstitutions?.length > 0) && (
+        <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50 p-3 text-sm text-amber-950">
+          {workout.modifications && (
+            <>
+              <div className="font-semibold">Training level options</div>
+              <div className="mt-2 grid gap-2 md:grid-cols-3">
+                <ModificationItem label="Beginner" text={workout.modifications.beginner} />
+                <ModificationItem label="Intermediate" text={workout.modifications.intermediate} />
+                <ModificationItem label="Advanced" text={workout.modifications.advanced} />
+              </div>
+            </>
+          )}
+          {workout.safetySubstitutions?.length > 0 && (
+            <div className={workout.modifications ? "mt-3 border-t border-amber-200 pt-3" : ""}>
+              <div className="font-semibold">Safety substitutions</div>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-900">
+                {workout.safetySubstitutions.map((substitution) => (
+                  <li key={substitution}>{substitution}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
       <div className="mt-4 rounded-lg border bg-white p-3 text-sm">
@@ -1680,6 +1905,19 @@ function TimeBreakdownItem({ label, minutes, tone }) {
         {label}
       </p>
       <p className="mt-1 text-lg font-bold">{minutes} min</p>
+    </div>
+  )
+}
+
+function ModificationItem({ label, text }) {
+  if (!text) return null
+
+  return (
+    <div className="rounded-lg bg-white p-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+        {label}
+      </p>
+      <p className="mt-1 text-xs text-amber-950">{text}</p>
     </div>
   )
 }
